@@ -7,8 +7,11 @@ require_relative '../lib/sewes/http_server'
 
 # Basic HTML page for testing
 class TestPage
+  def initialize(srv)
+    @srv = srv
+  end
   def render(_, _)
-    SEWeS::Response.new(200, 'Hello, world!')
+    @srv.response('Hello, world!')
   end
 end
 
@@ -22,7 +25,7 @@ RSpec.describe SEWeS::HTTPServer do
     it 'should respond to a http GET request' do
       start_server
 
-      tp = TestPage.new
+      tp = TestPage.new(@srv)
       @srv.add_route('GET', %w[hello], tp, :render)
       response = Net::HTTP.get(URI("http://localhost:#{@srv.port}/hello"))
       expect(response).to eql('Hello, world!')
