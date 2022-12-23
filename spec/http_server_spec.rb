@@ -10,7 +10,7 @@ class TestPage
   def initialize(srv)
     @srv = srv
   end
-  def render(_, _)
+  def render(_)
     @srv.response('Hello, world!')
   end
 end
@@ -26,7 +26,9 @@ RSpec.describe SEWeS::HTTPServer do
       start_server
 
       tp = TestPage.new(@srv)
-      @srv.add_route('GET', %w[hello], tp, :render)
+      @srv.get('hello') do |r|
+        tp.render(r)
+      end
       response = Net::HTTP.get(URI("http://localhost:#{@srv.port}/hello"))
       expect(response).to eql('Hello, world!')
       expect(@srv.statistics.requests['GET']).to eql(1)
@@ -130,7 +132,7 @@ RSpec.describe SEWeS::HTTPServer do
   def start_server
     @srv = SEWeS::HTTPServer.new
     @thr = Thread.new do
-      @srv.run
+      @srv.start
     end
 
     sleep(1)

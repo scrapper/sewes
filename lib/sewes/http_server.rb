@@ -12,7 +12,6 @@
 require 'socket'
 require 'cgi'
 require 'base64'
-require 'uri'
 
 require_relative 'request'
 require_relative 'response'
@@ -50,38 +49,40 @@ module SEWeS
       @thread = nil
 
       @routes = {}
+      # The optional 404 handler.
+      @not_found = nil
       @routes_lock = Monitor.new
       @statistics = Statistics.new
     end
 
-    # Register a given method of a given object to be called whenever a
-    # request of the given type is received with the given URL path.
-    def add_route(type, path, object, method)
-      unless REQUEST_TYPES.include?(type)
-        raise ArgumentError, 'type must be either one of ' \
-          "#{REQUEST_TYPES.join(' ')}"
-      end
-      unless path.respond_to?(:each)
-        raise ArgumentError, 'path must be an Enumerable'
-      end
-
-      path.each do |p|
-        if p.include?('/')
-          raise ArgumentError, 'path elements must not include a /'
-        end
-      end
-
+    # Register a path and corresponding code block for a get request.
+    def get(path, &block)
       @routes_lock.synchronize do
-        @routes["#{type}:#{path.join('/')}"] =
-          Route.new(type, path, object, method)
+        @routes["GET:#{path}"] =
+          Route.new('GET', path, block)
       end
     end
 
-    def run
+    # Register a path and corresponding code block for a post request.
+    def post(path, &block)
+      @routes_lock.synchronize do
+        @routes["POST:#{path}"] =
+          Route.new('POST', path, block)
+      end
+    end
+
+    def not_found(&block)
+      @routes_lock.synchronize do
+        @not_found = block
+      end
+    end
+
+    # Start the HTTP application server
+    def start
       @thread = Thread.new do
         server = TCPServer.new(@hostname, @port)
         # If requested port is 0, we have to determine the actual port.
-        @port = server.addr[1] if @port == 0
+        @port = server.addr[1] if @port.zero?
 
         while !@terminate_mutex.synchronize { @terminate } do
           begin
@@ -103,6 +104,7 @@ module SEWeS
       end
     end
 
+    # Stop the HTTP application server
     def stop
       @terminate_mutex.synchronize { @terminate = true }
       # Send a dummy request to force the TCPServer.accept to return.
@@ -118,7 +120,7 @@ module SEWeS
     end
 
     # Creates a HTTP Response object to be send to client
-    def response(body, code: 200, content_type: 'text/plain')
+    def response(body, code: 200, content_type: 'text/html')
       Response.new(@session, @log, code, body, content_type)
     end
 
@@ -232,23 +234,12 @@ module SEWeS
     end
 
     def process_request(request)
-      # Construct a dummy URI so we can use the URI class to parse the request
-      # and extract the path and parameters.
-      uri = URI("http://#{request.headers['host'] || 'localhost'}" +
-                request.path)
-
-      parameter = (query = uri.query) ? CGI.parse(query) : {}
-
-      path = uri.path.split('/')
-      path.shift
-
+      proc = nil
       @routes_lock.synchronize do
-        unless (route = @routes["#{request.method}:#{path.join('/')}"])
-          return error(404, "Path not found: #{uri.path}")
-        end
-
-        return route.object.send(route.method, parameter, request)
+        proc = (route = @routes["#{request.method}:#{request.path}"]) ? route.proc : @not_found
       end
+
+      proc ? proc.call(request) : error(404, "Path not found: /#{request.path}")
     end
   end
 end

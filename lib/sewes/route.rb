@@ -7,6 +7,6 @@
 # published by the Free Software Foundation.
 
 module SEWeS
-  class Route < Struct.new(:type, :path, :object, :method)
+  class Route < Struct.new(:type, :path, :proc)
   end
 end

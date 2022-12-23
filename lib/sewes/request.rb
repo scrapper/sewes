@@ -5,11 +5,12 @@
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of version 2 of the GNU General Public License as
 # published by the Free Software Foundation.
+require 'uri'
 
 module SEWeS
   # This class models a HTTP request.
   class Request
-    attr_reader :code, :path, :method, :version, :headers, :body
+    attr_reader :code, :method, :version, :headers, :body
 
     def initialize(path, method, version, headers, body)
       @path = path
@@ -19,8 +20,25 @@ module SEWeS
       @body = body
     end
 
+    # @return [String] The path of the request (without the arguments)
+    def path
+      uri = URI("http://#{@headers['host'] || 'localhost'}" + @path)
+      path = uri.path
+      # Drop the leading '/'
+      path[1..]
+    end
+
+    # @return [Hash] The paramater used for the request
+    def parameter
+      # Construct a dummy URI so we can use the URI class to parse the request
+      # and extract the path and parameters.
+      uri = URI("http://#{@headers['host'] || 'localhost'}" + @path)
+
+      (query = uri.query) ? CGI.parse(query) : {}
+    end
+
+    # @return [Hash] The cookies provided by the request
     def cookies
-      pp @headers
       return {} unless (cookies = @headers['Cookie'] || @headers['cookie'])
 
       # Make sure cookies is always an Array even if only one header line was
@@ -32,8 +50,6 @@ module SEWeS
         (c = Cookie.parse(cookie)) && cookie_hash[c.name] = c
       end
 
-      puts "Cookie Hash:"
-      pp cookie_hash
       cookie_hash
     end
   end
