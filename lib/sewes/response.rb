@@ -8,39 +8,31 @@
 
 require 'cgi'
 
-require_relative 'cookie'
+require_relative 'headers'
 
 module SEWeS
   # HTTP response to the client
   class Response
-    attr_reader :code, :body, :content_type
+    attr_reader :code, :headers, :body, :content_type
 
     def initialize(session, log, code, body = '', content_type = 'text/plain')
       @session = session
       @log = log
       @code = code
+      @headers = Headers.new
+      @headers['content-type'] = content_type
       @body = body
-      @content_type = content_type
-      @cookies = {}
-    end
-
-    def set_cookie(cookie)
-      @cookies[cookie.name] = cookie
     end
 
     def send
       message = HTTPServer::MESSAGE_CODES[@code] || 'Internal Server Error'
 
-      http = "HTTP/1.1 #{@code} #{message}\r\n" \
-        "Content-Type: #{@content_type}\r\n"
-      @body.empty? || (http += "Content-Length: #{@body.bytesize}\r\n")
+      http = "HTTP/1.1 #{@code} #{message}\r\n"
+      @body.empty? || (@headers['content-length'] = @body.bytesize)
+      @headers['connection'] = 'close'
 
-      @cookies.each do |_, cookie|
-        http += "Set-Cookie: #{cookie}\r\n"
-      end
-      http += "Connection: close\r\n"
-
-      @body.empty? || (http += "\r\n#{@body}")
+      http += @headers.to_s
+      @body.empty? || (http += @body)
 
       begin
         @session.print(http)

@@ -17,6 +17,7 @@ require_relative 'request'
 require_relative 'response'
 require_relative 'route'
 require_relative 'statistics'
+require_relative 'headers'
 
 module SEWeS
   # Simple embedded application web server
@@ -145,43 +146,13 @@ module SEWeS
       method, path, version = request.lines[0].split
       # Ensure that the request type is supported.
       unless method && REQUEST_TYPES.include?(method)
-        return error(405, "Only the following request methods are " +
+        return error(405, 'Only the following request methods are ' \
                      "allowed: #{REQUEST_TYPES.join(' ')}")
       end
 
-      headers = {}
-      body = ''
-      mode = :headers
-
-      lines[1..].each do |line|
-        if mode == :headers
-          if line == "\r\n"
-            # An empty line switches to body parsing mode.
-            mode = :body
-          else
-            header, value = line.split
-            next if header.nil? || value.nil? || header.empty? || value.empty?
-
-            header = header.gsub(':', '').downcase
-
-            # Store the valid header
-            if headers.include?(header)
-              # Some header fields can occur multiple times. These values will
-              # be stored as an Array.
-              unless headers[header].is_a?(Array)
-                first_value = headers[header]
-                headers[header] = [first_value]
-              end
-              headers[header] << value
-            else
-              headers[header] = value
-            end
-          end
-        else
-          # Append the read line to the body.
-          body += line
-        end
-      end
+      headers = Headers.new
+      body_start_line = headers.parse(lines[1..])
+      body = lines[body_start_line..].join
 
       content_length = 0
       if headers['content-length']

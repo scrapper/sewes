@@ -40,14 +40,14 @@ class SimpleApp
   end
 
   def hello(request)
-    cookies = request.cookies
+    cookies = request.headers.cookies
     body = html_page('Hello', "<h1>Hello, #{cookies.include?('greeting') ? 'again ' : ''}world!</h1>")
     response = @server.response(body)
 
     cookie = SEWeS::Cookie.new('greeting', 'hello')
     cookie.domain = HOSTNAME
     cookie.max_age = 300
-    response.set_cookie(cookie)
+    response.headers['set-cookie'] = cookie
 
     response
   end
@@ -60,17 +60,16 @@ class SimpleApp
   private
 
   def html_page(title, body)
-    body =
-      <<~"HTML"
-        <html>
-          <head>
-            <title>#{title}</title>
-          </head>
-          <body>
-            #{body}
-          </body>
-        </html>
-      HTML
+    <<~"HTML"
+      <html>
+        <head>
+          <title>#{title}</title>
+        </head>
+        <body>
+          #{body}
+        </body>
+      </html>
+    HTML
   end
 end
 

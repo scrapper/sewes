@@ -64,7 +64,7 @@ module SEWeS
       cookie
     end
 
-    def to_s
+    def to_escaped_s
       cookie = "#{@name}=#{CGI.escape(@value)}"
 
       @expires && (cookie += @expires.utc.strftime('; Expires=%a, %d %b %Y %H:%M:%S GMT'))
@@ -79,27 +79,27 @@ module SEWeS
     end
 
     def assign_optional_value(name, value, silent_errors: false)
-      case name
-      when 'Expires'
+      case name.downcase
+      when 'expires'
         begin
           puts value.class
           @expires = Time.parse(CGI.unescape(value))
         rescue ArgumentError => e
           raise e unless silent_errors
         end
-      when 'Max-age'
+      when 'max-age'
         unless /[1-9][0-9]*/ =~ value
           raise ArgumentError, "Max-age (#{value}) must be a positive number"
         end
 
         @max_age = value.to_i
-      when 'Domain'
+      when 'domain'
         @domain = CGI.unescape(value)
-      when 'Path'
+      when 'path'
         @path = CGI.unescape(value)
-      when 'SameSite'
+      when 'samesite'
         # This is not part of RFC6265.
-        if %w[Strict Lax None].include?(value)
+        if %w[strict lax none].include?(value.downcase)
           @same_site = value
         else
           raise ArgumentError, "SameSite must be Strict, Lax or none, not #{value}"
@@ -110,10 +110,10 @@ module SEWeS
     end
 
     def assign_flag(name, silent_errors = false)
-      case name
-      when 'Secure'
+      case name.downcase
+      when 'secure'
         @secure = true
-      when 'HttpOnly'
+      when 'httponly'
         @http_only = true
       else
         raise ArgumentError, "Unknown cookie attribute #{name}" unless silent_errors

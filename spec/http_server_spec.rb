@@ -70,7 +70,7 @@ RSpec.describe SEWeS::HTTPServer do
         MSG
         ]
       ]
-      responses = exchange_messages(messages)
+      exchange_messages(messages)
       expect(@srv.statistics.errors[405]).to eql(1)
     end
 
@@ -87,7 +87,7 @@ RSpec.describe SEWeS::HTTPServer do
         MSG
         ]
       ]
-      responses = exchange_messages(messages)
+      exchange_messages(messages)
       expect(@srv.statistics.errors[413]).to eql(1)
     end
 

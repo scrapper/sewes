@@ -10,7 +10,7 @@ RSpec.describe SEWeS::Cookie do
       cookie.expires = Time.parse('2022-12-25-8:15 GMT')
       cookie.domain = 'kingdom.org'
 
-      expect(cookie.to_s).to eql('Animal=Lion; Expires=Sun, 25 Dec 2022 08:15:00 GMT; Domain=kingdom.org; Secure')
+      expect(cookie.to_escaped_s).to eql('Animal=Lion; Expires=Sun, 25 Dec 2022 08:15:00 GMT; Domain=kingdom.org; Secure')
     end
 
     it 'should parse a cookie' do

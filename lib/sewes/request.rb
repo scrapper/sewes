@@ -7,6 +7,8 @@
 # published by the Free Software Foundation.
 require 'uri'
 
+require_relative 'headers'
+
 module SEWeS
   # This class models a HTTP request.
   class Request
