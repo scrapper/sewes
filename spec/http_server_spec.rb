@@ -44,7 +44,7 @@ RSpec.describe SEWeS::HTTPServer do
       responses = exchange_messages(messages)
       # Body starts at line 5
       expect(responses.first.split("\r\n")[5]).to eql('Request is empty')
-      expect(@srv.statistics.errors[400]).to eql(1)
+      expect(@srv.statistics.errors[400]).to be >=1
     end
 
     it 'should error on unknown route' do
@@ -130,7 +130,8 @@ RSpec.describe SEWeS::HTTPServer do
   end
 
   def start_server
-    @srv = SEWeS::HTTPServer.new
+    log = StringIO.new
+    @srv = SEWeS::HTTPServer.new(log: log)
     @thr = Thread.new do
       @srv.start
     end

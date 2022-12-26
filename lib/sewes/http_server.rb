@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby -w
-# encoding: UTF-8
+# frozen_string_literal: true
 
 # = SEWeS - A Simple Embedded WEb Server
 #
@@ -41,7 +41,14 @@ module SEWeS
 
     attr_reader :port, :statistics
 
-    def initialize(hostname = 'localhost', port = 0, log = $stderr)
+    # Create a new HTTPServer object. You can specify the hostname and the port the server
+    # should be listening on. If you do not want the log output to be sent to STDERR, you can
+    # provide an IO object.
+    # param hostname [String] The hostname to listen for
+    # param port [Integer] The port number to listen on. Provide 0 if you want a free port
+    #       to be selected automatically.
+    # param log [IO] An IO object to capture any log messages
+    def initialize(hostname: 'localhost', port: 0, log: $stderr)
       @hostname = hostname
       @port = port
       @log = log

@@ -1,4 +1,4 @@
-# encoding: UTF-8
+# frozen_string_literal: true
 
 # = SEWeS - A Simple Embedded WEb Server
 #
@@ -18,7 +18,8 @@ module SEWeS
 
     def initialize(name, value)
       unless /\A[A-Za-z0-9_]+\z/ =~ name
-        raise ArgumentError, "Cookie name #{name} may only contain US ASCII characters (no control or special characters)"
+        raise ArgumentError, "Cookie name #{name} may only contain US ASCII characters " \
+                             '(no control or special characters)'
       end
 
       @name = name

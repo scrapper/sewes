@@ -1,8 +1,4 @@
-# encoding: UTF-8
-
-require 'cgi'
-
-require_relative 'cookie'
+# frozen_string_literal: true
 
 # = SEWeS - A Simple Embedded WEb Server
 #
@@ -11,6 +7,10 @@ require_relative 'cookie'
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of version 2 of the GNU General Public License as
 # published by the Free Software Foundation.
+
+require 'cgi'
+
+require_relative 'cookie'
 
 module SEWeS
   # Handles HTTP headers in a Hash. It suppors parsing and generating them
@@ -93,9 +93,9 @@ module SEWeS
       read_lines
     end
 
-    # Conver the header into a string that can be used as part of an HTTP exchange.
+    # Convert the header into a string that can be used as part of an HTTP exchange.
     def to_s
-      s = ''
+      s = String.new
       @fields.each do |name, value|
         if value.respond_to?(:each)
           value.each do |val|

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # = SEWeS - A Simple Embedded WEb Server
 #
 # Copyright (c) 2021, 2022 by Chris Schlaeger <chris@linux.com>
