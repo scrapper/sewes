@@ -41,6 +41,7 @@ class SimpleApp
     @server.response(body, content_type: 'image/ico').send
   end
 
+  # param [Request] The request to respond to.
   def hello(request)
     cookies = request.headers.cookies
     body = html_page('Hello', "<h1>Hello, #{cookies.include?('greeting') ? 'again ' : ''}world!</h1>")

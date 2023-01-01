@@ -100,17 +100,17 @@ module SEWeS
         @path = CGI.unescape(value)
       when 'samesite'
         # This is not part of RFC6265.
-        if %w[strict lax none].include?(value.downcase)
-          @same_site = value
-        else
+        unless %w[strict lax none].include?(value.downcase)
           raise ArgumentError, "SameSite must be Strict, Lax or none, not #{value}"
         end
+
+        @same_site = value
       else
         raise ArgumentError, "Unknown cookie attribute #{name}" unless silent_errors
       end
     end
 
-    def assign_flag(name, silent_errors = false)
+    def assign_flag(name, silent_errors: false)
       case name.downcase
       when 'secure'
         @secure = true

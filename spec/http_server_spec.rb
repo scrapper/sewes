@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'socket'
 require 'net/http'
 require 'uri'
@@ -10,6 +12,7 @@ class TestPage
   def initialize(srv)
     @srv = srv
   end
+
   def render(_)
     @srv.response('Hello, world!')
   end
@@ -44,7 +47,7 @@ RSpec.describe SEWeS::HTTPServer do
       responses = exchange_messages(messages)
       # Body starts at line 5
       expect(responses.first.split("\r\n")[5]).to eql('Request is empty')
-      expect(@srv.statistics.errors[400]).to be >=1
+      expect(@srv.statistics.errors[400]).to be >= 1
     end
 
     it 'should error on unknown route' do
