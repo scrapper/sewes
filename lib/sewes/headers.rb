@@ -46,18 +46,49 @@ module SEWeS
     end
 
     # Conveniance method for self['cookies'] that always returns a Hash.
+    # @return Hash
     def cookies
-      # We have no cookies.
-      return {} unless (cookie = @fields['cookie'])
+      get_field('cookies')
+    end
 
-      if cookie.respond_to?(:each)
+    # Conveniance method for self['set-cookies']=
+    def set_cookie(value)
+      set_field('set-cookie', value)
+    end
+
+    # Conveniance method for self[name]= that automatically expands the field
+    # value to an Array of values to store multiple values.
+    # @param name [String] name of the field
+    # @param value value of the field
+    def set_field(name, value)
+      if (field = @fields[name]).nil?
+        # No field with the given name exists. Just assign the value to a new field.
+        @fields[name] = value
+      elsif field.respond_to?(:each)
+        # A field already exists and has multiple values. Just append the new value.
+        field << value
+      else
+        # The field exists, but only has one value. We have to convert it to an
+        # Array and then append the new value.
+        @fields[name] = [@fields[name]] + [value]
+      end
+    end
+
+    # Convienience method for self[name] that always returns a Hash.
+    # @param name [String] name of the header field
+    # @return Hash
+    def get_field(name)
+      # We have no field with the given name.
+      return {} unless (field = @fields[name])
+
+      if field.respond_to?(:each)
         hash = {}
-        cookie.each do |c|
+        fielid.each do |c|
           hash[c.name] = c
         end
         hash
       else
-        { cookie.name => cookie }
+        { field.name => field }
       end
     end
 

@@ -128,6 +128,7 @@ module SEWeS
     end
 
     # Creates a HTTP Response object to be send to client
+    # @return [Response] A new Response object
     def response(body, code: 200, content_type: 'text/html')
       Response.new(@session, @log, code, body, content_type)
     end
