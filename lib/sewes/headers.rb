@@ -45,13 +45,13 @@ module SEWeS
       @fields[name.downcase]
     end
 
-    # Conveniance method for self['cookies'] that always returns a Hash.
+    # Conveniance method for self['cookie'] that always returns a Hash.
     # @return Hash
     def cookies
-      get_field('cookies')
+      get_field('cookie')
     end
 
-    # Conveniance method for self['set-cookies']=
+    # Conveniance method for self['set-cookie']=
     def set_cookie(value)
       set_field('set-cookie', value)
     end
