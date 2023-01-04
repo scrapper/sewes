@@ -17,8 +17,8 @@ module SEWeS
   class Response
     attr_reader :code, :headers, :body, :content_type
 
-    def initialize(session, log, code, body = '', content_type = 'text/plain')
-      @session = session
+    def initialize(connection, log, code, body = '', content_type = 'text/plain')
+      @connection = connection
       @log = log
       @code = code
       @headers = Headers.new
@@ -37,7 +37,7 @@ module SEWeS
       @body.empty? || (http += @body)
 
       begin
-        @session.print(http)
+        @connection.print(http)
       rescue => e
         @log.puts "SEWeS::Response.send failed: #{e.message}"
       end

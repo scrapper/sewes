@@ -92,9 +92,9 @@ module SEWeS
         # If requested port is 0, we have to determine the actual port.
         @port = server.addr[1] if @port.zero?
 
-        while !@terminate_mutex.synchronize { @terminate } do
+        until @terminate_mutex.synchronize { @terminate }
           begin
-            @session = server.accept
+            @connection = server.accept
             request = read_request
             if request.is_a?(Response)
               # The request was faulty. Return an error to the client.
@@ -103,8 +103,8 @@ module SEWeS
               process_request(request).send
             end
 
-            @session.close
-            @session = nil
+            @connection.close
+            @connection = nil
           rescue IOError => e
             @log.puts "HTTPServer #{e.class}: #{e.message}"
           end
@@ -130,21 +130,23 @@ module SEWeS
     # Creates a HTTP Response object to be send to client
     # @return [Response] A new Response object
     def response(body, code: 200, content_type: 'text/html')
-      Response.new(@session, @log, code, body, content_type)
+      Response.new(@connection, @log, code, body, content_type)
     end
 
     # Creates a HTTP error Response object to be send to client
     def error(code, message)
       @statistics.errors[code] += 1
       @log.puts message
-      Response.new(@session, @log, code, message)
+      Response.new(@connection, @log, code, message)
     end
 
     private
 
     def read_request
       # Read the first part of the request. It may be the only part.
-      request = read_with_timeout(2048, 0.02)
+      request = read_with_timeout(2048, 3)
+
+      peeraddr = @connection.peeraddr(false)
 
       # It must not be empty.
       if request.empty? || (lines = request.lines).length < 3
@@ -186,21 +188,21 @@ module SEWeS
       @statistics.requests[method] += 1
 
       # Return the full request.
-      Request.new(path, method, version, headers, body)
+      Request.new(peeraddr[3], path, method, version, headers, body)
     end
 
     def read_with_timeout(maxbytes, timeout_secs)
       str = ''
 
       deadline = Time.now - timeout_secs
-      fds = [@session]
+      fds = [@connection]
       while maxbytes.positive? && timeout_secs > 0.0
         break unless IO.select(fds, [], [], timeout_secs)
 
         # We only have one socket that we are listening on. If select()
-        # fires with a true result, we have something to read from @session.
+        # fires with a true result, we have something to read from @connection.
         begin
-          s = @session.readpartial(maxbytes)
+          s = @connection.readpartial(maxbytes)
         rescue EOFError
           break
         end

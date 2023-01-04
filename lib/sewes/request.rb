@@ -14,9 +14,10 @@ require_relative 'headers'
 module SEWeS
   # This class models a HTTP request.
   class Request
-    attr_reader :code, :method, :version, :headers, :body
+    attr_reader :code, :peer_address, :method, :version, :headers, :body
 
-    def initialize(path, method, version, headers, body)
+    def initialize(peer_address, path, method, version, headers, body)
+      @peer_address = peer_address
       @path = path
       @method = method
       @version = version
