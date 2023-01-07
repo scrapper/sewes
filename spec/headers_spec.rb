@@ -18,11 +18,11 @@ RSpec.describe SEWeS::Headers do
 
   it 'should support parsing headers and extracting cookies' do
     s = "location: some/place/else\r\n" \
-      "cookie: foo=bar;valid=true\r\n" \
-      "cookie: foobar=barfoo\r\n\r\n"
+      "cookie: foo=bar; valid=true;\r\n" \
+      " foobar=barfoo\r\n\r\n"
     h = SEWeS::Headers.new
-    h.parse(s.split("\r\n"))
+    h.parse(s.lines + ["\r\n"])
     expect(h['location']).to eql('some/place/else')
-    expect(h['cookie'].map { |c| { c.name => c.value } }).to eql([{ 'foo' => 'bar' }, { 'foobar' => 'barfoo' }])
+    expect(h.cookies).to eql({ 'foo' => 'bar', 'valid' => 'true', 'foobar' => 'barfoo' })
   end
 end

@@ -14,17 +14,30 @@ require_relative 'cookie'
 
 module SEWeS
   # Handles HTTP headers in a Hash. It suppors parsing and generating them
-  # according to RFC4229. Header fields are stored in a Hash by name. A
-  # field value can be an Array if multiple fields of the same name are
+  # according to RFC2616 and RFC6265. Header fields are stored in a Hash by
+  # name. A field value can be an Array if multiple fields of the same name are
   # present in the header.
   class Headers
+    # token          = 1*<any CHAR except CTLs or separators>
+    # separators     = "(" | ")" | "<" | ">" | "@"
+    #                | "," | ";" | ":" | "\" | <">
+    #                | "/" | "[" | "]" | "?" | "="
+    #                | "{" | "}" | SP | HT
+    TOKEN_RXP = '[!#-\'.0-9@-Z^-z|~-]+'
+    FIELD_CONTENT_RXP = '[ -~]+'
+    # cookie-octet      = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
+    #                   ; US-ASCII characters excluding CTLs,
+    #                   ; whitespace DQUOTE, comma, semicolon,
+    #                   ; and backslash
+    COOKIE_VALUE_RXP = '[!\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]*'
+
     def initialize
       @fields = {}
     end
 
     def []=(name, value)
       # name must only consist of visible US ASCII characters without ':'
-      raise ArgumentError, "Illegal header field name #{name}" unless /\A[\x21-\x39\x41-\x7e]+\z/ =~ name
+      raise ArgumentError, "Illegal header field name #{name}" unless /\A#{TOKEN_RXP}\z/ =~ name
 
       if @fields.include?(name)
         # Some name fields can occur multiple times. These values will
@@ -48,10 +61,15 @@ module SEWeS
     # Conveniance method for self['cookie'] that always returns a Hash.
     # @return Hash
     def cookies
-      get_field('cookie')
+      # RFC6265 allows for cookies with same name. Since the web application
+      # determines how and what cookies are used, we limit ourselves to just
+      # supporting cookies with unique names. This allows us to use a Hash
+      # to manage the cookies in a much more convenient way.
+      @fields['cookie'].to_h
     end
 
     # Conveniance method for self['set-cookie']=
+    # @param value [String]
     def set_cookie(value)
       set_field('set-cookie', value)
     end
@@ -74,51 +92,47 @@ module SEWeS
       end
     end
 
-    # Convienience method for self[name] that always returns a Hash.
-    # @param name [String] name of the header field
-    # @return Hash
-    def get_field(name)
-      # We have no field with the given name.
-      return {} unless (field = @fields[name])
-
-      if field.respond_to?(:each)
-        hash = {}
-        fielid.each do |c|
-          hash[c.name] = c
-        end
-        hash
-      else
-        { field.name => field }
-      end
-    end
-
     # Parse the provided lines for header fields. An empty line, only
     # containing CR+LF stops the parsing.
+    # @param lines [Array of String] CR+LF terminated Strings
     # @return [Integer] the number of lines parsed
     def parse(lines)
       read_lines = 0
+      # A buffer to collect the header field. It may span multiple lines.
+      field = ''
       lines.each do |line|
         read_lines += 1
-        # An empty line concludes the header section
-        return read_lines if line == "\r\n"
+        if /\A#{TOKEN_RXP}:#{FIELD_CONTENT_RXP}\r\n\z/ =~ line || line == "\r\n"
+          # We've found the begining of a header field or the end of the header.
+          # Process the gathered field if we have one.
+          unless field.empty?
+            _, name, value = field.split(/\A(#{TOKEN_RXP}):\s*([\t -~\r\n]*)\s*\z/)
+            field = ''
+            # Silently ignore all invalid lines
+            next if name.nil? || value.nil? || name.empty? || value.empty?
 
-        _, name, value = line.split(/\A([\x21-\x39\x41-\x7e]+):\s([ -~]*)\s*\z/)
-        # Silently ignore all invalid lines
-        next if name.nil? || value.nil? || name.empty? || value.empty?
-        # To avoid ambiguities, we convert all header names to lower case.
-        name.downcase!
-
-        # Some fields get special treatment. The others are unescaped
-        # to deal with any encoded special characters.
-        self[name] =
-          case name
-          when 'content-length'
-            value.to_i
-          when 'cookie-set', 'cookie'
-            Cookie.parse(value)
-          else
-            CGI.unescape(value)
+            # To avoid ambiguities, we convert all header names to lower case.
+            name.downcase!
+            # Remove trailing \r\n
+            value.chomp!
+            # Some fields get special treatment. The others are unescaped
+            # to deal with any encoded special characters.
+            self[name] =
+              case name
+              when 'content-length'
+                value.to_i
+              when 'cookie'
+                parse_cookie(value)
+              else
+                CGI.unescape(value)
+              end
           end
+
+          # An empty line concludes the header section
+          return read_lines if line == "\r\n"
+        end
+        # Append the current line to the field buffer
+        field += line
       end
 
       read_lines
@@ -140,6 +154,21 @@ module SEWeS
       end
 
       "#{s}\r\n"
+    end
+
+    private
+
+    def parse_cookie(header_line)
+      cookies = []
+      header_line.split(/;\s+/).each do |field|
+        _, name, value = field.split(/\A(#{TOKEN_RXP})=(#{COOKIE_VALUE_RXP})\s*\z/)
+        # Ensure that name is properly formed
+        next if name.nil? || name.empty?
+
+        cookies << [name, CGI.unescape(value)]
+      end
+
+      cookies
     end
   end
 end

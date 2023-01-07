@@ -15,6 +15,7 @@ module SEWeS
   # This class models a HTTP request.
   class Request
     attr_reader :code, :peer_address, :method, :version, :headers, :body
+    attr_accessor :session
 
     def initialize(peer_address, path, method, version, headers, body)
       @peer_address = peer_address
@@ -23,6 +24,12 @@ module SEWeS
       @version = version
       @headers = headers
       @body = body
+      @session = nil
+    end
+
+    # @return [String] the full path of the request with all arguments
+    def url
+      @path
     end
 
     # @return [String] The path of the request (without the arguments)

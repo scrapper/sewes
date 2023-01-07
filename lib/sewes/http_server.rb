@@ -18,6 +18,7 @@ require_relative 'response'
 require_relative 'route'
 require_relative 'statistics'
 require_relative 'headers'
+require_relative 'session_manager'
 
 module SEWeS
   # Simple embedded application web server
@@ -39,7 +40,7 @@ module SEWeS
       500 => 'Internal Server Error'
     }.freeze
 
-    attr_reader :port, :statistics
+    attr_reader :port, :session_manager, :statistics
 
     # Create a new HTTPServer object. You can specify the hostname and the port the server
     # should be listening on. If you do not want the log output to be sent to STDERR, you can
@@ -60,6 +61,7 @@ module SEWeS
       # The optional 404 handler.
       @not_found = nil
       @routes_lock = Monitor.new
+      @session_manager = SessionManager.new
       @statistics = Statistics.new
     end
 
@@ -146,8 +148,6 @@ module SEWeS
       # Read the first part of the request. It may be the only part.
       request = read_with_timeout(2048, 3)
 
-      peeraddr = @connection.peeraddr(false)
-
       # It must not be empty.
       if request.empty? || (lines = request.lines).length < 3
         return error(400, 'Request is empty')
@@ -187,8 +187,14 @@ module SEWeS
 
       @statistics.requests[method] += 1
 
-      # Return the full request.
-      Request.new(peeraddr[3], path, method, version, headers, body)
+      request = Request.new(@connection.peeraddr(false)[3], path, method, version, headers, body)
+      if (key = request.headers.cookies['session_key']&.value) && (session = @session_manager.session(key))
+        # The request has a cookie named 'session_key' that matches a known session. Add this
+        # Session to the request headers so we can identify the user and their privileges.
+        request.session = session
+      end
+
+      request
     end
 
     def read_with_timeout(maxbytes, timeout_secs)
@@ -220,7 +226,18 @@ module SEWeS
         proc = (route = @routes["#{request.method}:#{request.path}"]) ? route.proc : @not_found
       end
 
-      proc ? proc.call(request) : error(404, "Path not found: /#{request.path}")
+      return error(404, "Path not found: /#{request.path}") unless proc
+
+      response = proc.call(request)
+
+      return response unless (session = request.session)
+      # If we have a valid Session for this connection, add the 'session_key' cookie to the response.
+      @session_manager.renew(session)
+      cookie = Cookie.new('session_key', session.key)
+      cookie.expires = session.valid_until
+      response.headers.set_cookie(cookie)
+
+      response
     end
   end
 end

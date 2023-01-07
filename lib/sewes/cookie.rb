@@ -33,38 +33,6 @@ module SEWeS
       @same_site = nil
     end
 
-    def self.parse(header_line)
-      fields =
-        if header_line.include?(';')
-          # The cookie has optional attributes
-          header_line.split(';')
-        else
-          [header_line]
-        end
-
-      cookie = nil
-      fields.each do |field|
-        if field.include?('=')
-          name, value = field.split('=')
-          name.delete!(' ')
-          # Ensure that name is properly formed
-          return nil unless /\A[A-Za-z0-9_]+\z/ =~ name
-
-          if cookie
-            cookie.assign_optional_value(name, value, silent_errors: true)
-          else
-            value = CGI.unescape(value)
-            cookie = Cookie.new(name, value)
-          end
-        else
-          field.delete!(' ')
-          cookie&.assign_flag(field, silent_errors: true)
-        end
-      end
-
-      cookie
-    end
-
     def to_escaped_s
       cookie = "#{@name}=#{CGI.escape(@value)}"
 
@@ -83,7 +51,6 @@ module SEWeS
       case name.downcase
       when 'expires'
         begin
-          puts value.class
           @expires = Time.parse(CGI.unescape(value))
         rescue ArgumentError => e
           raise e unless silent_errors
