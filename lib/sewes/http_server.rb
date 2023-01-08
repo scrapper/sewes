@@ -145,11 +145,14 @@ module SEWeS
     private
 
     def read_request
-      # Read the first part of the request. It may be the only part.
-      request = read_with_timeout(2048, 3)
+      #request = read_with_timeout(2048, 2)
+      begin
+        request = @connection.readpartial(2048)
+      rescue EOFError
+      end
 
       # It must not be empty.
-      if request.empty? || (lines = request.lines).length < 3
+      if request.nil? || request.empty? || (lines = request.lines).length < 3
         return error(400, 'Request is empty')
       end
 
@@ -173,7 +176,12 @@ module SEWeS
                        "#{MAX_CONTENT_LENGTH}")
         end
 
-        body += read_with_timeout(content_length - body.bytesize, 5)
+        while body.bytesize < content_length
+          str = read_with_timeout(content_length - body.bytesize, 1.5)
+          break if str.empty?
+
+          body += str
+        end
       end
       body.chomp!
 
@@ -188,7 +196,7 @@ module SEWeS
       @statistics.requests[method] += 1
 
       request = Request.new(@connection.peeraddr(false)[3], path, method, version, headers, body)
-      if (key = request.headers.cookies['session_key']&.value) && (session = @session_manager.session(key))
+      if (key = request.headers.cookies['session_key']) && (session = @session_manager.session(key))
         # The request has a cookie named 'session_key' that matches a known session. Add this
         # Session to the request headers so we can identify the user and their privileges.
         request.session = session
@@ -198,26 +206,18 @@ module SEWeS
     end
 
     def read_with_timeout(maxbytes, timeout_secs)
-      str = ''
-
-      deadline = Time.now - timeout_secs
       fds = [@connection]
-      while maxbytes.positive? && timeout_secs > 0.0
-        break unless IO.select(fds, [], [], timeout_secs)
+      return '' unless IO.select(fds, [], [], timeout_secs)
 
-        # We only have one socket that we are listening on. If select()
-        # fires with a true result, we have something to read from @connection.
-        begin
-          s = @connection.readpartial(maxbytes)
-        rescue EOFError
-          break
-        end
-        maxbytes -= s.bytesize
-        str += s
-        timeout_secs = deadline - Time.now
+      # We only have one socket that we are listening on. If select()
+      # fires with a true result, we have something to read from @connection.
+      begin
+        return @connection.readpartial(maxbytes)
+      rescue EOFError
+        puts "read_with_timeout: EOFError"
       end
 
-      str
+      ''
     end
 
     def process_request(request)

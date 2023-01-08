@@ -42,6 +42,12 @@ module SEWeS
         @sessions_by_user[user] = session
     end
 
+    # @param session [Session]
+    def logout(session)
+      @sessions_by_key.delete(session.key)
+      @sessions_by_user.delete(session.user_id)
+    end
+
     # Get the Session for the key
     # @param key [String]
     # @return [Session] The session that matches the given key. Returns nil
