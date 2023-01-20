@@ -235,6 +235,7 @@ module SEWeS
       @session_manager.renew(session)
       cookie = Cookie.new('session_key', session.key)
       cookie.expires = session.valid_until
+      cookie.same_site = 'strict'
       response.headers.set_cookie(cookie)
 
       response

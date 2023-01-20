@@ -11,10 +11,10 @@
 module SEWeS
   # Handles HTTP cookies according to RFC6265
   class Cookie
-    attr_reader :name, :value
+    attr_reader :name, :value, :same_site
 
     attr_accessor :expires, :max_age, :domain, :path, :secure,
-                  :http_only, :same_site
+                  :http_only
 
     def initialize(name, value)
       unless /\A[A-Za-z0-9_]+\z/ =~ name
@@ -67,14 +67,17 @@ module SEWeS
         @path = CGI.unescape(value)
       when 'samesite'
         # This is not part of RFC6265.
-        unless %w[strict lax none].include?(value.downcase)
-          raise ArgumentError, "SameSite must be Strict, Lax or none, not #{value}"
-        end
+        check_same_site(value)
 
         @same_site = value
       else
         raise ArgumentError, "Unknown cookie attribute #{name}" unless silent_errors
       end
+    end
+
+    def same_site=(value)
+      check_same_site(value)
+      @same_site = value
     end
 
     def assign_flag(name, silent_errors: false)
@@ -86,6 +89,14 @@ module SEWeS
       else
         raise ArgumentError, "Unknown cookie attribute #{name}" unless silent_errors
       end
+    end
+
+    private
+
+    def check_same_site(value)
+      return if %w[strict lax none].include?(value.downcase)
+
+      raise ArgumentError, "samesite must be 'strict', 'lax' or 'none', not '#{value}'"
     end
   end
 end
