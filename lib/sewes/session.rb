@@ -14,7 +14,7 @@ require 'securerandom'
 module SEWeS
   # Stores session key and privileges
   class Session
-    attr_reader :key, :user_id, :valid_until
+    attr_reader :key, :user_id, :valid_until, :state
 
     # Create a new Session object for the user session.
     # @param user_id [String] ID or login of the user
@@ -25,6 +25,7 @@ module SEWeS
       @timeout_seconds = timeout_seconds
       renew
       @privileges = privileges
+      @state = {}
     end
 
     # @return [Boolean] True if session is still valid, false if expired.
